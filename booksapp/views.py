@@ -2,9 +2,22 @@ from django.shortcuts import render
 from django.views.generic import (TemplateView, ListView, CreateView, UpdateView, DetailView, DeleteView)
 # Create your views here.
 
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
 from .forms import *  # All created forms
 from .models import *  # All created models
+
+
+class WriterRequiredMixin(UserPassesTestMixin):
+    """ Test: user in group Writer"""
+    def test_func(self):
+        return self.request.user.groups.filter(name= 'Writer').exists()
+
+
+class EditorRequiredMixin(UserPassesTestMixin):
+    """ delete view """
+    def test_func(self):
+        return self.request.user.groups.filter(name= 'Editor').exists()
 
 
 class HomeView(TemplateView):
@@ -34,31 +47,31 @@ class BookListView(ListView):
     model = Book
 
 
-class CountryCreateView(CreateView):
+class CountryCreateView(WriterRequiredMixin, CreateView):
     model = Country
     fields = '__all__'  # All fields from model
     success_url = reverse_lazy('booksapp:country_list')
 
 
-class LanguageCreateView(CreateView):
+class LanguageCreateView(WriterRequiredMixin, CreateView):
     model = Language
     form_class = LanguageCreateForm
     success_url = reverse_lazy('booksapp:language_list')
 
 
-class AuthorCreateView(CreateView):
+class AuthorCreateView(WriterRequiredMixin, CreateView):
     model = Author
     form_class = AuthorCreateForm
     success_url = reverse_lazy('booksapp:author_list')
 
 
-class BookCreateView(CreateView):
+class BookCreateView(WriterRequiredMixin, CreateView):
     model = Book
     form_class = BookCreateForm
     success_url = reverse_lazy('booksapp:book_list')
 
 
-class CountryUpdateView(UpdateView):
+class CountryUpdateView(WriterRequiredMixin, UpdateView):
     template_name = 'booksapp/country_form_update.html'
     model = Country
     fields = '__all__'
@@ -68,7 +81,8 @@ class CountryUpdateView(UpdateView):
         # Additional checks
         return super().form_valid(form)
 
-class LanguageUpdateView(UpdateView):
+
+class LanguageUpdateView(WriterRequiredMixin, UpdateView):
     template_name = 'booksapp/language_form_update.html'
     model = Language
     form_class = LanguageCreateForm
@@ -79,7 +93,7 @@ class LanguageUpdateView(UpdateView):
         return super().form_valid(form)
 
 
-class AuthorUpdateView(UpdateView):
+class AuthorUpdateView(WriterRequiredMixin, UpdateView):
     template_name = 'booksapp/author_form_update.html'
     model = Author
     form_class = AuthorCreateForm
@@ -90,7 +104,7 @@ class AuthorUpdateView(UpdateView):
         return super().form_valid(form)
 
 
-class BookUpdateView(UpdateView):
+class BookUpdateView(WriterRequiredMixin, UpdateView):
     template_name = 'booksapp/book_form_update.html'
     model = Book
     form_class = BookCreateForm
@@ -99,3 +113,44 @@ class BookUpdateView(UpdateView):
     def form_valid(self, form):
         # Additional checks
         return super().form_valid(form)
+
+
+class AuthorDetailView(DetailView):
+    # Default template: model_detail.html => author_detail.html
+    model = Author
+
+
+class BookDetailedView(DetailView):
+    model = Book
+
+
+class CountryDeleteView(EditorRequiredMixin, DeleteView):
+    # model_confirm_delete.html => country_confirm_deleted.html
+    model = Country
+    success_url = reverse_lazy('booksapp:country_list')
+
+
+class LanguageDeleteView(EditorRequiredMixin, DeleteView):
+    # model_confirm_delete.html => country_confirm_deleted.html
+    model = Language
+    success_url = reverse_lazy('booksapp:language_list')
+
+
+class AuthorDeleteView(EditorRequiredMixin, DeleteView):
+    # model_confirm_delete.html => author_confirm_deleted.html
+    model = Author
+    success_url = reverse_lazy('booksapp:author_list')
+
+
+class BookDeleteView(EditorRequiredMixin, DeleteView):
+    # model_confirm_delete.html => book_confirm_deleted.html
+    model = Book
+    success_url = reverse_lazy('booksapp:book_list')
+
+
+def custom403(request, exception):
+    return render(request, '403.html', status=403)
+
+
+def custom404(request, exception):
+    return render(request, '404.html', status=404)
